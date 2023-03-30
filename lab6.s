@@ -7,7 +7,7 @@ start_prompt:	.string "Press sw1 or any key to continue, or press q to quit at a
 sw1_header:		.string "sw1 : ", 0
 UART_header:	.string "UART: ", 0
 
-switch_speed:	.byte	0x00	; This is where you can store data. 
+switch_speed:	.byte	0x01	; This is where you can store data. 
 current_direction:	.byte	0x00			; The .byte assembler directive stores a byte
 			; (initialized to 0x20) at the label mydata.  
 			; Halfwords & Words can be stored using the 
@@ -150,10 +150,60 @@ gpio_interrupt_init:
     MOV pc, lr                 ; return to source call             ; return to source call
 
 
+timer_interrupt_init:
+    ; Connect clock to timer
+    MOV r11, #0xE604
+    MOVT r11, #0x400F   ; load address
+    LDRB r4, [r11]      ; load value
+    ORR r4, r4, #1      ; write 1 to bit 0
+    STRB r4, [r11]      ; store back
+
+    ; Enable timer
+    MOV r11, #0x000C
+    MOVT r11, #0x4003   ; load address
+    LDRB r4, [r11]      ; load value
+    ORR r4, r4, #1      ; write 1 to bit 0
+    STRB r4, [r11]      ; store back
+
+    ; Put timer into 32-bit mode
+    MOV r11, #0x0000
+    MOVT r11, #0x4003   ; load address
+    LDRB r4, [r11]      ; load value
+    AND r4, r4, #0xF8   ; write 0 to first 3 bits
+    STRB r4, [r11]      ; write back
+
+    ; Put timer into periodic mode
+    MOV r11, #0x0004
+    MOVT r11, #0x4003   ; load address
+    LDRB r4, [r11]      ; load value
+    ORR r4, r4, #2      ; write 2 to first two bits
+    STRB r4, [r11]      ; write back
+
+    ; Set up interval period
+    MOV r11, #0x0028
+    MOVT r11, #0x4003   ; load address
+    MOV r4, #0x2400     
+    MOVT r4, #0x00F4    ; load frequency
+    STRW r4, [r11]      ; store frequency
+
+    ; Enable timer to interrupt processor
+    MOV r11, #0x0018
+    MOVT r11, #0x4003   ; load address
+    LDRB r4, [r11]      ; load value
+    ORR r4, r4, #1      ; write 1 to bit 0
+    STRB r4, [r11]      ; write back
+
+    ; Configure processor to allow timer interrupts
+    MOV r11, #0xE100
+    MOVT r11, #0xE000
+    ; FINISH ##############################################################
+
+    ; Enable timer
+
 UART0_Handler: 
 	; NEEDS TO MAINTAIN REGISTERS R4-R11, R0-R3;R12;LR;PC DONT NEED PRESERVATION
 	; Save registers
-	PUSH {r4-r11}
+	PUSH {lr, r4-r11}
 
 	; Clear the interrupt, load -> or -> store
 	MOV r11, #0xC044
@@ -177,13 +227,13 @@ UART0_Handler:
 
 	; Restore registers
 	MOV r0, r5
-	POP {r4-r11}
+	POP {lr, r4-r11}
 
 	BX lr       	; Return
 	
 Switch_Handler:
 	; Save registers
-    PUSH {r4-r11}
+    PUSH {lr, r4-r11}
 
     ; Clear the interrupt, using load -> or -> store to not overwrite other data
     MOV  r11, #0x541c			
@@ -193,16 +243,15 @@ Switch_Handler:
 	STRB r4, [r11]				; Store back to clear interrupt
 
 	; Increment the switch counter: load it, increment, store
-    LDR r11, ptr_to_switch_counter	; Load the address
+    LDR r11, ptr_to_switch_speed	; Load the address
     LDRB r4, [r11]					; Read the value into r4
 	ADD r4, r4, #1					; Increment the value
 	STRB r4, [r11]					; Store the value
-    
-	; Display the graph
-	BL display_graph
+
+    ; Update the refresh frequency
 
 	; Restore registers
-    POP {r4-r11}
+    POP {lr, r4-r11}
 
 	; Return to interrupted instruction
     BX lr
@@ -219,6 +268,8 @@ Timer_Handler:
 
     ; Save the registers
     PUSH {lr, r4-r11}
+
+    ; Update position based on direction stored in current_direction and switch_speed
 
     ; Call display board to referesh the screen
     BL displayBoard
@@ -238,20 +289,6 @@ simple_read_character:
     
     POP {lr, r4-r11}           ; restore saved regs
     MOV pc, lr                 ; return to source call
-
-# output_character: 
-	
-# 	MOV PC,LR      	; Return
-
-
-# read_string: 
-	
-# 	MOV PC,LR      	; Return
-
-
-# output_string: 
-	
-# 	MOV PC,LR      	; Return
 
 
 display_graph:
