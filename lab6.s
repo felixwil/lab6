@@ -6,8 +6,9 @@
 start_prompt:	.string "Press sw1 or any key to continue, or press q to quit at any point:", 0
 sw1_header:		.string "sw1 : ", 0
 UART_header:	.string "UART: ", 0
-switch_counter:	.byte	0x00	; This is where you can store data. 
-UART_counter:	.byte	0x00			; The .byte assembler directive stores a byte
+
+switch_speed:	.byte	0x00	; This is where you can store data. 
+current_direction:	.byte	0x00			; The .byte assembler directive stores a byte
 			; (initialized to 0x20) at the label mydata.  
 			; Halfwords & Words can be stored using the 
 			; directives .half & .word 
@@ -25,15 +26,15 @@ UART_counter:	.byte	0x00			; The .byte assembler directive stores a byte
 	.global read_string		; This is from your Lab #4 Library
 	.global output_string		; This is from your Lab #4 Library
 	.global uart_init		; This is from your Lab #4 Library
-	.global lab5
+	.global lab6
 	
 ptr_to_start_prompt:		.word start_prompt
 ptr_to_sw1_header:			.word sw1_header
 ptr_to_UART_header:			.word UART_header
-ptr_to_switch_counter:		.word switch_counter
-ptr_to_UART_counter:		.word UART_counter
+ptr_to_switch_speed:		.word switch_speed
+ptr_to_current_direction:	.word current_direction
 
-lab5:	; This is your main routine which is called from your C wrapper    
+lab6:	; This is your main routine which is called from your C wrapper    
 	PUSH {lr}   		; Store lr to stack
 
 	; Initialize everything
@@ -46,11 +47,11 @@ lab5:	; This is your main routine which is called from your C wrapper
 	LDR r0, ptr_to_start_prompt
 	BL output_string
 
-lab5_loop:
+lab6_loop:
 	; If q, branch to end, otherwise continue
 	CMP r0, #0x71	
 	BEQ end_loop	; If q pressed jump to end
-	B lab5_loop		; If q not pressed, continue looping
+	B lab6_loop		; If q not pressed, continue looping
 
 end_loop:
 	POP {lr}		; Restore lr from the stack
@@ -215,6 +216,15 @@ Timer_Handler:
 	; Lab #6.  Instead, you can use the same startup code as for Lab #5.
 	; Remember to preserver registers r4-r11 by pushing then popping 
 	; them to & from the stack at the beginning & end of the handler.
+
+    ; Save the registers
+    PUSH {lr, r4-r11}
+
+    ; Call display board to referesh the screen
+    BL displayBoard
+
+    ; Restore the registers
+    POP {lr, r4-r11}
 
 	BX lr       	; Return
 
