@@ -198,7 +198,7 @@ timer_interrupt_init:
     MOVT r11, #0xE000   ; load address
     LDR r4, [r11]       ; load value
     ORR r4, r4, #0x80000; write 1 to bit 19
-    STR r4, [r11]       ; write back
+    STRW r4, [r11]       ; write back
 
     ; Enable timer
     MOV r11, #0x000C
@@ -255,7 +255,13 @@ Switch_Handler:
 	ADD r4, r4, #1					; Increment the value
 	STRB r4, [r11]					; Store the value
 
-    ; Update the refresh frequency
+    ; Update the refresh frequency, r4 contains clicks
+    MOV r5, #0x2400
+    MOVT r5, #0x00F4    ; load 16,000,000 into r5
+    UDIV r5, r5, r4     ; divide by r4 to get new frequency then store back
+    MOV r11, #0x0028
+    MOVT r11, #0x4003   ; load frequency address 
+    STRW r5, [r11]      ; store new frequency
 
 	; Restore registers
     POP {lr, r4-r11}
