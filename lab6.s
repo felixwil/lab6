@@ -195,10 +195,17 @@ timer_interrupt_init:
 
     ; Configure processor to allow timer interrupts
     MOV r11, #0xE100
-    MOVT r11, #0xE000
-    ; FINISH ##############################################################
+    MOVT r11, #0xE000   ; load address
+    LDR r4, [r11]       ; load value
+    ORR r4, r4, #0x80000; write 1 to bit 19
+    STR r4, [r11]       ; write back
 
     ; Enable timer
+    MOV r11, #0x000C
+    MOVT, r11, #0x4003  ; load address
+    LDRB r4, [r11]      ; load value
+    ORR r4, r4, #1      ; write 1 to bit 0
+    STRB r4, [r11]
 
 UART0_Handler: 
 	; NEEDS TO MAINTAIN REGISTERS R4-R11, R0-R3;R12;LR;PC DONT NEED PRESERVATION
